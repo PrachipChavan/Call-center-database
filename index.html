@@ -1,0 +1,2516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CallCore — Call Center Management System</title>
+  <meta name="description" content="Premium call center database management system with real-time analytics, agent tracking, customer management, and SQL console." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080b12;
+      --surface: #0f1420;
+      --surface2: #151c2e;
+      --surface3: #1b2340;
+      --border: rgba(99,102,241,0.15);
+      --border2: rgba(255,255,255,0.06);
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --accent3: #a78bfa;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --text: #e2e8f0;
+      --text2: #94a3b8;
+      --text3: #64748b;
+      --glow: rgba(99,102,241,0.25);
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.4);
+      --shadow-lg: 0 8px 48px rgba(0,0,0,0.6);
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── SIDEBAR ────────────────────────── */
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border2);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 100;
+      transition: transform 0.3s ease;
+    }
+    .sidebar-logo {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid var(--border2);
+    }
+    .logo-mark {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 0 20px var(--glow);
+    }
+    .logo-text { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo-text span { color: var(--accent3); }
+    .logo-sub { font-size: 10px; color: var(--text3); margin-top: 2px; letter-spacing: 1px; text-transform: uppercase; }
+
+    .nav-section { padding: 16px 12px 4px; }
+    .nav-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; padding: 0 8px 8px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: all 0.2s ease;
+      color: var(--text2); font-size: 13.5px; font-weight: 500;
+      user-select: none; margin-bottom: 2px;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.1));
+      color: var(--accent3);
+      border: 1px solid rgba(99,102,241,0.25);
+      box-shadow: 0 0 16px rgba(99,102,241,0.1);
+    }
+    .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .nav-badge {
+      margin-left: auto; background: var(--danger);
+      color: white; font-size: 10px; font-weight: 700;
+      padding: 2px 6px; border-radius: 20px; min-width: 18px; text-align: center;
+    }
+    .sidebar-footer {
+      margin-top: auto; padding: 16px;
+      border-top: 1px solid var(--border2);
+    }
+    .status-dot {
+      display: inline-block; width: 8px; height: 8px;
+      background: var(--success); border-radius: 50%;
+      box-shadow: 0 0 8px var(--success); margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* ── MAIN CONTENT ────────────────────── */
+    .main {
+      margin-left: 240px;
+      flex: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOPBAR ──────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border2);
+      padding: 14px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+      backdrop-filter: blur(12px);
+    }
+    .topbar-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-time { font-size: 12px; color: var(--text3); }
+    .btn-icon {
+      width: 36px; height: 36px; border-radius: var(--radius-sm);
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 16px; transition: all 0.2s ease;
+    }
+    .btn-icon:hover { background: var(--surface3); color: var(--text); }
+
+    /* ── PAGE CONTAINER ──────────────────── */
+    .page { display: none; padding: 28px; animation: fadeIn 0.3s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── SECTION HEADER ──────────────────── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; }
+    .section-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+
+    /* ── BUTTONS ─────────────────────────── */
+    .btn {
+      padding: 9px 18px; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      border: none; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white; box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(99,102,241,0.5); }
+    .btn-secondary {
+      background: var(--surface2); color: var(--text2);
+      border: 1px solid var(--border2);
+    }
+    .btn-secondary:hover { background: var(--surface3); color: var(--text); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    .btn-success { background: rgba(16,185,129,0.15); color: var(--success); border: 1px solid rgba(16,185,129,0.3); }
+    .btn-success:hover { background: rgba(16,185,129,0.25); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+    /* ── CARDS ───────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .card:hover { box-shadow: var(--shadow-lg); }
+
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text2); }
+
+    /* ── KPI CARDS ───────────────────────── */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 16px; margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative; overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .kpi-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .kpi-card.blue::before { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+    .kpi-card.green::before { background: linear-gradient(90deg, #10b981, #059669); }
+    .kpi-card.orange::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .kpi-card.red::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+    .kpi-icon { font-size: 28px; margin-bottom: 12px; }
+    .kpi-value { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+    .kpi-label { font-size: 12px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .kpi-change { font-size: 12px; margin-top: 8px; font-weight: 600; }
+    .kpi-change.up { color: var(--success); }
+    .kpi-change.down { color: var(--danger); }
+
+    /* ── CHARTS GRID ─────────────────────── */
+    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .charts-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .chart-wrapper { position: relative; height: 220px; }
+
+    /* ── TABLES ──────────────────────────── */
+    .table-container { overflow-x: auto; border-radius: var(--radius-sm); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      background: var(--surface2); color: var(--text3); text-transform: uppercase;
+      font-size: 11px; letter-spacing: 0.8px; font-weight: 700;
+      padding: 10px 14px; text-align: left; white-space: nowrap;
+      border-bottom: 1px solid var(--border2);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border2);
+      transition: background 0.15s ease;
+    }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 11px 14px; color: var(--text2); vertical-align: middle; }
+    tbody td:first-child { color: var(--text); font-weight: 500; }
+
+    /* ── BADGES ──────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-blue { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.25); }
+    .badge-green { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
+    .badge-orange { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.25); }
+    .badge-red { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+    .badge-gray { background: rgba(148,163,184,0.1); color: var(--text3); border: 1px solid var(--border2); }
+    .badge-purple { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.25); }
+
+    /* ── FILTERS BAR ─────────────────────── */
+    .filters-bar {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .search-box {
+      display: flex; align-items: center;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 8px 12px; gap: 8px;
+      flex: 1; min-width: 200px; max-width: 320px;
+    }
+    .search-box input {
+      background: none; border: none; outline: none;
+      color: var(--text); font-size: 13px; flex: 1;
+      font-family: 'Inter', sans-serif;
+    }
+    .search-box input::placeholder { color: var(--text3); }
+    select.filter-select {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 8px 12px;
+      color: var(--text2); font-size: 13px; cursor: pointer;
+      font-family: 'Inter', sans-serif; outline: none;
+    }
+    select.filter-select:focus { border-color: var(--accent); }
+
+    /* ── FORMS ───────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1/-1; }
+    .form-label { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input, .form-select, .form-textarea {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 10px 12px;
+      color: var(--text); font-size: 13px;
+      font-family: 'Inter', sans-serif; outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    /* ── MODAL ───────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      z-index: 500; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px; width: 90%; max-width: 580px;
+      max-height: 88vh; overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+      animation: modalIn 0.25s ease;
+    }
+    .modal-lg { max-width: 720px; }
+    @keyframes modalIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .modal-title { font-size: 18px; font-weight: 700; }
+    .modal-close {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      color: var(--text2); cursor: pointer; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal-close:hover { background: var(--surface3); }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* ── AGENT CARD ──────────────────────── */
+    .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius); padding: 20px;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; transition: all 0.3s ease; cursor: pointer;
+    }
+    .agent-card:hover { transform: translateY(-4px); border-color: var(--border); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+    .agent-avatar {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 700; margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white; box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+    }
+    .agent-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .agent-role { font-size: 12px; color: var(--text3); margin-bottom: 10px; }
+    .agent-stats { display: flex; gap: 12px; margin-top: 8px; }
+    .agent-stat { text-align: center; }
+    .agent-stat-val { font-size: 16px; font-weight: 700; }
+    .agent-stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; }
+
+    /* ── TICKET BOARD ────────────────────── */
+    .ticket-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .ticket-col { background: var(--surface2); border-radius: var(--radius); padding: 16px; }
+    .ticket-col-header {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .ticket-item {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    .ticket-item:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(99,102,241,0.15); }
+    .ticket-id { font-size: 11px; color: var(--text3); font-weight: 600; margin-bottom: 6px; }
+    .ticket-issue { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--text); }
+    .ticket-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text3); }
+
+    /* ── SQL CONSOLE ─────────────────────── */
+    .sql-editor {
+      background: #0a0d14; border: 1px solid var(--border2);
+      border-radius: var(--radius); padding: 16px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px; color: #a5f3fc; min-height: 150px;
+      outline: none; resize: vertical; width: 100%;
+      line-height: 1.6;
+    }
+    .sql-results { margin-top: 16px; }
+    .sql-results table { font-size: 12px; }
+    .sql-results thead th { background: #0f1a2e; }
+    .sql-msg { font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 12px; }
+    .sql-msg.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--success); }
+    .sql-msg.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); }
+
+    /* ── ANALYTICS ───────────────────────── */
+    .leaderboard-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--border2);
+    }
+    .leaderboard-rank {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+    }
+    .rank-1 { background: linear-gradient(135deg,#f59e0b,#d97706); color: white; }
+    .rank-2 { background: linear-gradient(135deg,#94a3b8,#64748b); color: white; }
+    .rank-3 { background: linear-gradient(135deg,#b45309,#92400e); color: white; }
+    .rank-other { background: var(--surface2); color: var(--text3); }
+    .leaderboard-info { flex: 1; }
+    .leaderboard-name { font-size: 13px; font-weight: 600; }
+    .leaderboard-dept { font-size: 11px; color: var(--text3); }
+    .leaderboard-score { font-size: 15px; font-weight: 700; color: var(--accent3); }
+
+    /* ── PROGRESS BAR ────────────────────── */
+    .progress-bar { background: var(--surface3); border-radius: 10px; height: 6px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 10px; transition: width 0.8s ease; }
+
+    /* ── SCROLLBAR ───────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+    /* ── TOAST ───────────────────────────── */
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg);
+      display: flex; align-items: center; gap: 10px;
+      animation: toastIn 0.3s ease; min-width: 260px;
+    }
+    @keyframes toastIn { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--accent); }
+
+    /* ── EMPTY STATE ─────────────────────── */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text3); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+
+    /* ── LOADER ──────────────────────────── */
+    .loader-overlay {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 9999; gap: 20px;
+    }
+    .loader-ring {
+      width: 56px; height: 56px; border-radius: 50%;
+      border: 3px solid var(--surface3);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { font-size: 14px; color: var(--text3); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .mt-16 { margin-top: 16px; }
+    .mt-24 { margin-top: 24px; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .flex-gap { display: flex; align-items: center; gap: 8px; }
+    .text-sm { font-size: 12px; color: var(--text3); }
+    .text-bold { font-weight: 700; }
+    .text-accent { color: var(--accent3); }
+    .divider { border: none; border-top: 1px solid var(--border2); margin: 16px 0; }
+  </style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loader-overlay" id="loaderOverlay">
+  <div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:36px">📞</div>
+      <div style="font-size:22px;font-weight:800;margin-top:8px">CallCore</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px">Initializing Database…</div>
+    </div>
+  </div>
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loaderStatus">Loading SQL engine…</div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <div class="logo-icon">📞</div>
+      <div>
+        <div class="logo-text">Call<span>Core</span></div>
+        <div class="logo-sub">Management System</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="navigate('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">📊</span> Dashboard
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Operations</div>
+    <div class="nav-item" onclick="navigate('calls')" id="nav-calls">
+      <span class="nav-icon">📞</span> Call Logs
+    </div>
+    <div class="nav-item" onclick="navigate('tickets')" id="nav-tickets">
+      <span class="nav-icon">🎫</span> Tickets
+      <span class="nav-badge" id="openTicketBadge">0</span>
+    </div>
+    <div class="nav-item" onclick="navigate('customers')" id="nav-customers">
+      <span class="nav-icon">🧑‍💼</span> Customers
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Team</div>
+    <div class="nav-item" onclick="navigate('agents')" id="nav-agents">
+      <span class="nav-icon">👤</span> Agents
+    </div>
+    <div class="nav-item" onclick="navigate('analytics')" id="nav-analytics">
+      <span class="nav-icon">📈</span> Analytics
+    </div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Database</div>
+    <div class="nav-item" onclick="navigate('console')" id="nav-console">
+      <span class="nav-icon">🗄️</span> SQL Console
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div style="font-size:12px;color:var(--text3)">
+      <span class="status-dot"></span>Database Active
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px" id="dbStats">Loading…</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Dashboard</div>
+    <div class="topbar-right">
+      <div class="topbar-time" id="clockDisplay"></div>
+      <button class="btn-icon" title="Refresh" onclick="refreshCurrentPage()">🔄</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-icon">📞</div>
+        <div class="kpi-value" id="kpi-calls-today">—</div>
+        <div class="kpi-label">Calls Today</div>
+        <div class="kpi-change up" id="kpi-calls-change">↑ Loading…</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-icon">👤</div>
+        <div class="kpi-value" id="kpi-active-agents">—</div>
+        <div class="kpi-label">Active Agents</div>
+        <div class="kpi-change" id="kpi-agents-info" style="color:var(--text3)">Loading…</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-icon">🎫</div>
+        <div class="kpi-value" id="kpi-open-tickets">—</div>
+        <div class="kpi-label">Open Tickets</div>
+        <div class="kpi-change down" id="kpi-tickets-change">Loading…</div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-icon">⏱️</div>
+        <div class="kpi-value" id="kpi-avg-duration">—</div>
+        <div class="kpi-label">Avg Handle Time</div>
+        <div class="kpi-change up" id="kpi-duration-change">Loading…</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 Call Volume — Last 14 Days</div>
+        </div>
+        <div class="chart-wrapper"><canvas id="chartVolume"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🍩 Calls by Type</div>
+        </div>
+        <div class="chart-wrapper"><canvas id="chartType"></canvas></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚡ Recent Calls</div>
+          <button class="btn btn-secondary btn-sm" onclick="navigate('calls')">View All →</button>
+        </div>
+        <div class="table-container" id="dashRecentCalls">
+          <div class="empty-state"><div class="loader-ring" style="width:28px;height:28px;border-width:2px;margin:auto"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚨 Urgent Tickets</div>
+          <button class="btn btn-secondary btn-sm" onclick="navigate('tickets')">View All →</button>
+        </div>
+        <div id="dashUrgentTickets">
+          <div class="empty-state"><div class="loader-ring" style="width:28px;height:28px;border-width:2px;margin:auto"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-16">
+      <div class="card-header">
+        <div class="card-title">🏆 Top Agents Today</div>
+      </div>
+      <div class="table-container" id="dashTopAgents">
+        <div class="empty-state"><div class="loader-ring" style="width:28px;height:28px;border-width:2px;margin:auto"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALLS -->
+  <div class="page" id="page-calls">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📞 Call Logs</div>
+        <div class="section-sub">Complete record of all inbound and outbound calls</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('modalLogCall')">➕ Log New Call</button>
+    </div>
+    <div class="card">
+      <div class="filters-bar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="callSearch" placeholder="Search by customer, agent…" oninput="filterCalls()" />
+        </div>
+        <select class="filter-select" id="callTypeFilter" onchange="filterCalls()">
+          <option value="">All Types</option>
+          <option>Inbound</option>
+          <option>Outbound</option>
+          <option>Callback</option>
+          <option>Escalation</option>
+          <option>Follow-up</option>
+        </select>
+        <select class="filter-select" id="callOutcomeFilter" onchange="filterCalls()">
+          <option value="">All Outcomes</option>
+          <option>Resolved</option>
+          <option>Escalated</option>
+          <option>Voicemail</option>
+          <option>No Answer</option>
+          <option>Callback Scheduled</option>
+        </select>
+        <select class="filter-select" id="callDeptFilter" onchange="filterCalls()">
+          <option value="">All Departments</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="clearCallFilters()">✕ Clear</button>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Call ID</th>
+              <th>Timestamp</th>
+              <th>Customer</th>
+              <th>Agent</th>
+              <th>Type</th>
+              <th>Duration</th>
+              <th>Outcome</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="callsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- AGENTS -->
+  <div class="page" id="page-agents">
+    <div class="section-header">
+      <div>
+        <div class="section-title">👤 Agents</div>
+        <div class="section-sub">Manage your call center team</div>
+      </div>
+      <div class="flex-gap">
+        <button class="btn btn-secondary" id="agentViewToggle" onclick="toggleAgentView()">🗃️ Table View</button>
+        <button class="btn btn-primary" onclick="openModal('modalAddAgent')">➕ Add Agent</button>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="text" id="agentSearch" placeholder="Search agents…" oninput="filterAgents()" />
+      </div>
+      <select class="filter-select" id="agentDeptFilter" onchange="filterAgents()">
+        <option value="">All Departments</option>
+      </select>
+      <select class="filter-select" id="agentStatusFilter" onchange="filterAgents()">
+        <option value="">All Statuses</option>
+        <option>Active</option>
+        <option>Inactive</option>
+        <option>On Leave</option>
+      </select>
+    </div>
+    <div id="agentCardView" class="agent-grid"></div>
+    <div id="agentTableView" style="display:none" class="card">
+      <div class="table-container">
+        <table>
+          <thead><tr><th>ID</th><th>Name</th><th>Department</th><th>Shift</th><th>Status</th><th>Total Calls</th><th>Avg Duration</th><th>Actions</th></tr></thead>
+          <tbody id="agentsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div class="page" id="page-customers">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🧑‍💼 Customers</div>
+        <div class="section-sub">Customer directory and interaction history</div>
+      </div>
+      <button class="btn btn-primary" onclick="openModal('modalAddCustomer')">➕ Add Customer</button>
+    </div>
+    <div class="card">
+      <div class="filters-bar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="customerSearch" placeholder="Search by name, email, phone…" oninput="filterCustomers()" />
+        </div>
+        <select class="filter-select" id="customerTierFilter" onchange="filterCustomers()">
+          <option value="">All Tiers</option>
+          <option>Standard</option>
+          <option>Premium</option>
+          <option>VIP</option>
+          <option>Enterprise</option>
+        </select>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Account #</th><th>Tier</th><th>Total Calls</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="customersTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TICKETS -->
+  <div class="page" id="page-tickets">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🎫 Support Tickets</div>
+        <div class="section-sub">Track and resolve customer issues</div>
+      </div>
+      <div class="flex-gap">
+        <button class="btn btn-secondary" id="ticketViewToggle" onclick="toggleTicketView()">📋 List View</button>
+        <button class="btn btn-primary" onclick="openModal('modalAddTicket')">➕ New Ticket</button>
+      </div>
+    </div>
+    <div id="ticketBoardView">
+      <div class="ticket-grid">
+        <div class="ticket-col">
+          <div class="ticket-col-header">
+            <span>🔴 Open</span>
+            <span class="badge badge-red" id="ticketCountOpen">0</span>
+          </div>
+          <div id="ticketColOpen"></div>
+        </div>
+        <div class="ticket-col">
+          <div class="ticket-col-header">
+            <span>🟡 In Progress</span>
+            <span class="badge badge-orange" id="ticketCountProgress">0</span>
+          </div>
+          <div id="ticketColProgress"></div>
+        </div>
+        <div class="ticket-col">
+          <div class="ticket-col-header">
+            <span>🟢 Resolved</span>
+            <span class="badge badge-green" id="ticketCountResolved">0</span>
+          </div>
+          <div id="ticketColResolved"></div>
+        </div>
+      </div>
+    </div>
+    <div id="ticketListView" style="display:none" class="card">
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Ticket ID</th><th>Customer</th><th>Issue</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody id="ticketsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="page" id="page-analytics">
+    <div class="section-header">
+      <div>
+        <div class="section-title">📈 Analytics</div>
+        <div class="section-sub">Performance insights and trend analysis</div>
+      </div>
+    </div>
+    <div class="charts-grid-3">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📞 Calls by Department</div></div>
+        <div class="chart-wrapper"><canvas id="chartDeptCalls"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">✅ Resolution Rates</div></div>
+        <div class="chart-wrapper"><canvas id="chartResolution"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">⏱️ Avg Handle Time by Dept</div></div>
+        <div class="chart-wrapper"><canvas id="chartHandleTime"></canvas></div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🏆 Agent Leaderboard</div></div>
+        <div id="leaderboardList"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📊 Call Outcomes Summary</div></div>
+        <div id="outcomeSummary"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SQL CONSOLE -->
+  <div class="page" id="page-console">
+    <div class="section-header">
+      <div>
+        <div class="section-title">🗄️ SQL Console</div>
+        <div class="section-sub">Execute raw SQL queries against the CallCore database</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Query Editor</div>
+        <div class="flex-gap">
+          <select class="filter-select" id="sqlQuickSelect" onchange="loadQuickQuery(this.value)">
+            <option value="">Quick Queries…</option>
+            <option value="schema">Show All Tables</option>
+            <option value="agents">All Agents</option>
+            <option value="customers">All Customers</option>
+            <option value="calls">Recent Calls (20)</option>
+            <option value="tickets">Open Tickets</option>
+            <option value="dept_stats">Department Stats</option>
+            <option value="agent_perf">Agent Performance</option>
+            <option value="cust_history">Customer Call History</option>
+            <option value="daily_volume">Daily Call Volume</option>
+          </select>
+          <button class="btn btn-primary" onclick="runSQLQuery()">▶ Run Query</button>
+          <button class="btn btn-secondary btn-sm" onclick="clearConsole()">✕ Clear</button>
+        </div>
+      </div>
+      <textarea class="sql-editor" id="sqlEditor" placeholder="-- Type your SQL query here&#10;SELECT * FROM agents LIMIT 10;" spellcheck="false"></textarea>
+      <div id="sqlOutput"></div>
+    </div>
+
+    <div class="card mt-16">
+      <div class="card-header"><div class="card-title">📋 Database Schema</div></div>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Table</th><th>Columns</th><th>Row Count</th><th>Description</th></tr></thead>
+          <tbody id="schemaTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- Log Call Modal -->
+<div class="modal-overlay" id="modalLogCall">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📞 Log New Call</div>
+      <button class="modal-close" onclick="closeModal('modalLogCall')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Customer</label>
+        <select class="form-select" id="callCustomerId"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Agent</label>
+        <select class="form-select" id="callAgentId"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Call Type</label>
+        <select class="form-select" id="callType">
+          <option>Inbound</option><option>Outbound</option>
+          <option>Callback</option><option>Escalation</option><option>Follow-up</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Duration (seconds)</label>
+        <input type="number" class="form-input" id="callDuration" min="10" max="7200" value="180" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Outcome</label>
+        <select class="form-select" id="callOutcome">
+          <option>Resolved</option><option>Escalated</option>
+          <option>Voicemail</option><option>No Answer</option><option>Callback Scheduled</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Timestamp</label>
+        <input type="datetime-local" class="form-input" id="callTimestamp" />
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="callNotes" placeholder="Add call notes…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalLogCall')">Cancel</button>
+      <button class="btn btn-primary" onclick="logCall()">📞 Log Call</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Agent Modal -->
+<div class="modal-overlay" id="modalAddAgent">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">👤 Add New Agent</div>
+      <button class="modal-close" onclick="closeModal('modalAddAgent')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="agentName" placeholder="John Smith" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="agentEmail" placeholder="john@callcore.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select class="form-select" id="agentDeptId"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Shift</label>
+        <select class="form-select" id="agentShift">
+          <option>Morning</option><option>Afternoon</option>
+          <option>Evening</option><option>Night</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="agentStatus">
+          <option>Active</option><option>Inactive</option><option>On Leave</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hire Date</label>
+        <input type="date" class="form-input" id="agentHireDate" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddAgent')">Cancel</button>
+      <button class="btn btn-primary" onclick="addAgent()">➕ Add Agent</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Agent Modal -->
+<div class="modal-overlay" id="modalEditAgent">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit Agent</div>
+      <button class="modal-close" onclick="closeModal('modalEditAgent')">✕</button>
+    </div>
+    <input type="hidden" id="editAgentId" />
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="editAgentName" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="editAgentEmail" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Department</label>
+        <select class="form-select" id="editAgentDeptId"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Shift</label>
+        <select class="form-select" id="editAgentShift">
+          <option>Morning</option><option>Afternoon</option>
+          <option>Evening</option><option>Night</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="editAgentStatus">
+          <option>Active</option><option>Inactive</option><option>On Leave</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalEditAgent')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditAgent()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div class="modal-overlay" id="modalAddCustomer">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🧑‍💼 Add New Customer</div>
+      <button class="modal-close" onclick="closeModal('modalAddCustomer')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="custName" placeholder="Jane Doe" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" class="form-input" id="custPhone" placeholder="+1-555-0100" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="custEmail" placeholder="jane@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number</label>
+        <input type="text" class="form-input" id="custAccount" placeholder="ACC-XXXXX" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tier</label>
+        <select class="form-select" id="custTier">
+          <option>Standard</option><option>Premium</option>
+          <option>VIP</option><option>Enterprise</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddCustomer')">Cancel</button>
+      <button class="btn btn-primary" onclick="addCustomer()">➕ Add Customer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Ticket Modal -->
+<div class="modal-overlay" id="modalAddTicket">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🎫 Create New Ticket</div>
+      <button class="modal-close" onclick="closeModal('modalAddTicket')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Customer</label>
+        <select class="form-select" id="ticketCustomerId"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assigned Agent</label>
+        <select class="form-select" id="ticketAgentId"></select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Issue Summary</label>
+        <input type="text" class="form-input" id="ticketIssue" placeholder="Describe the customer's issue…" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select" id="ticketPriority">
+          <option>Low</option><option>Medium</option>
+          <option>High</option><option>Critical</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select class="form-select" id="ticketCategory">
+          <option>Billing</option><option>Technical</option>
+          <option>Account</option><option>General</option><option>Complaint</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Details</label>
+        <textarea class="form-textarea" id="ticketDetails" placeholder="Additional details…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAddTicket')">Cancel</button>
+      <button class="btn btn-primary" onclick="addTicket()">🎫 Create Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ticket Detail Modal -->
+<div class="modal-overlay" id="modalTicketDetail">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="ticketDetailTitle">Ticket Details</div>
+      <button class="modal-close" onclick="closeModal('modalTicketDetail')">✕</button>
+    </div>
+    <div id="ticketDetailBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="deleteTicketFromDetail()">🗑️ Delete</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalTicketDetail')">Close</button>
+      <button class="btn btn-success btn-sm" onclick="updateTicketStatus('In Progress')">🔄 In Progress</button>
+      <button class="btn btn-primary btn-sm" onclick="updateTicketStatus('Resolved')">✅ Resolve</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agent Profile Modal -->
+<div class="modal-overlay" id="modalAgentProfile">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="agentProfileTitle">Agent Profile</div>
+      <button class="modal-close" onclick="closeModal('modalAgentProfile')">✕</button>
+    </div>
+    <div id="agentProfileBody"></div>
+  </div>
+</div>
+
+<!-- Customer History Modal -->
+<div class="modal-overlay" id="modalCustomerHistory">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="custHistTitle">Customer History</div>
+      <button class="modal-close" onclick="closeModal('modalCustomerHistory')">✕</button>
+    </div>
+    <div id="custHistBody"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════════════════
+let db = null;
+let currentPage = 'dashboard';
+let agentViewMode = 'card';
+let ticketViewMode = 'board';
+let currentTicketId = null;
+const charts = {};
+
+// ── CLOCK ────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── NAVIGATION ───────────────────────────────────────────
+const pageTitles = {
+  dashboard: 'Dashboard',
+  calls: '📞 Call Logs',
+  agents: '👤 Agents',
+  customers: '🧑‍💼 Customers',
+  tickets: '🎫 Support Tickets',
+  analytics: '📈 Analytics',
+  console: '🗄️ SQL Console'
+};
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page).classList.add('active');
+  document.getElementById('pageTitle').textContent = pageTitles[page];
+  currentPage = page;
+  renderPage(page);
+}
+
+function refreshCurrentPage() { renderPage(currentPage); }
+
+function renderPage(page) {
+  if (!db) return;
+  switch (page) {
+    case 'dashboard': renderDashboard(); break;
+    case 'calls': renderCalls(); break;
+    case 'agents': renderAgents(); break;
+    case 'customers': renderCustomers(); break;
+    case 'tickets': renderTickets(); break;
+    case 'analytics': renderAnalytics(); break;
+    case 'console': renderConsole(); break;
+  }
+}
+
+// ── MODAL HELPERS ────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── TOAST ────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── SQL HELPERS ──────────────────────────────────────────
+function runSQL(sql, params = []) {
+  try {
+    return db.exec(sql, params);
+  } catch (e) {
+    console.error('SQL Error:', e, sql);
+    return null;
+  }
+}
+
+function queryRows(sql, params = []) {
+  try {
+    const res = db.exec(sql, params);
+    if (!res.length) return [];
+    const { columns, values } = res[0];
+    return values.map(row => {
+      const obj = {};
+      columns.forEach((c, i) => obj[c] = row[i]);
+      return obj;
+    });
+  } catch (e) {
+    console.error('SQL Error:', e);
+    return [];
+  }
+}
+
+function queryOne(sql, params = []) {
+  const rows = queryRows(sql, params);
+  return rows.length ? rows[0] : null;
+}
+
+function queryVal(sql, params = []) {
+  const row = queryOne(sql, params);
+  if (!row) return null;
+  return Object.values(row)[0];
+}
+
+// ── FORMAT HELPERS ────────────────────────────────────────
+function fmtDuration(sec) {
+  if (!sec) return '—';
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}m ${s}s`;
+}
+function fmtDateTime(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function fmtDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function initials(name) {
+  return (name || '??').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+}
+function typeBadge(type) {
+  const map = {
+    'Inbound': 'badge-blue',
+    'Outbound': 'badge-green',
+    'Callback': 'badge-orange',
+    'Escalation': 'badge-red',
+    'Follow-up': 'badge-purple'
+  };
+  return `<span class="badge ${map[type] || 'badge-gray'}">${type}</span>`;
+}
+function outcomeBadge(outcome) {
+  const map = {
+    'Resolved': 'badge-green',
+    'Escalated': 'badge-red',
+    'Voicemail': 'badge-gray',
+    'No Answer': 'badge-gray',
+    'Callback Scheduled': 'badge-orange'
+  };
+  return `<span class="badge ${map[outcome] || 'badge-gray'}">${outcome}</span>`;
+}
+function priorityBadge(p) {
+  const map = { 'Critical': 'badge-red', 'High': 'badge-orange', 'Medium': 'badge-blue', 'Low': 'badge-gray' };
+  return `<span class="badge ${map[p] || 'badge-gray'}">${p}</span>`;
+}
+function statusBadge(s) {
+  const map = { 'Active': 'badge-green', 'Inactive': 'badge-gray', 'On Leave': 'badge-orange' };
+  return `<span class="badge ${map[s] || 'badge-gray'}">${s}</span>`;
+}
+function tierBadge(t) {
+  const map = { 'VIP': 'badge-purple', 'Enterprise': 'badge-blue', 'Premium': 'badge-orange', 'Standard': 'badge-gray' };
+  return `<span class="badge ${map[t] || 'badge-gray'}">${t}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DATABASE INIT
+// ═══════════════════════════════════════════════════════════
+async function initDB() {
+  document.getElementById('loaderStatus').textContent = 'Loading SQL engine…';
+  const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` });
+  db = new SQL.Database();
+  document.getElementById('loaderStatus').textContent = 'Creating tables…';
+  createTables();
+  document.getElementById('loaderStatus').textContent = 'Seeding sample data…';
+  seedData();
+  document.getElementById('loaderStatus').textContent = 'Ready!';
+  updateDBStats();
+  setTimeout(() => {
+    document.getElementById('loaderOverlay').style.display = 'none';
+    navigate('dashboard');
+  }, 400);
+}
+
+function createTables() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS departments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      description TEXT,
+      head_name TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS agents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      department_id INTEGER REFERENCES departments(id),
+      shift TEXT DEFAULT 'Morning',
+      status TEXT DEFAULT 'Active',
+      hire_date DATE,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS customers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      phone TEXT,
+      email TEXT,
+      account_number TEXT UNIQUE,
+      tier TEXT DEFAULT 'Standard',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER REFERENCES customers(id),
+      agent_id INTEGER REFERENCES agents(id),
+      call_type TEXT NOT NULL,
+      duration_seconds INTEGER DEFAULT 0,
+      outcome TEXT NOT NULL,
+      notes TEXT,
+      called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER REFERENCES customers(id),
+      agent_id INTEGER REFERENCES agents(id),
+      call_id INTEGER REFERENCES calls(id),
+      issue TEXT NOT NULL,
+      details TEXT,
+      priority TEXT DEFAULT 'Medium',
+      category TEXT DEFAULT 'General',
+      status TEXT DEFAULT 'Open',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      resolved_at DATETIME
+    );
+
+    CREATE TABLE IF NOT EXISTS performance_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      agent_id INTEGER REFERENCES agents(id),
+      review_date DATE,
+      calls_handled INTEGER DEFAULT 0,
+      avg_duration INTEGER DEFAULT 0,
+      resolution_rate REAL DEFAULT 0,
+      csat_score REAL DEFAULT 0,
+      notes TEXT
+    );
+  `);
+}
+
+function seedData() {
+  // Departments
+  const depts = [
+    ['Customer Support', 'General customer inquiries and support', 'Sarah Mitchell'],
+    ['Technical Support', 'Technical troubleshooting and IT issues', 'James Patel'],
+    ['Billing', 'Billing inquiries and payment processing', 'Angela Torres'],
+    ['Sales', 'New customer acquisition and upselling', 'Robert Chen'],
+    ['Escalations', 'Handling escalated and complex cases', 'Diana Novak'],
+    ['Quality Assurance', 'Call monitoring and agent training', 'Marcus Webb'],
+  ];
+  depts.forEach(([n, d, h]) => db.run('INSERT INTO departments (name, description, head_name) VALUES (?, ?, ?)', [n, d, h]));
+
+  // Agents (20)
+  const agents = [
+    ['Olivia Harper', 'o.harper@callcore.com', 1, 'Morning', 'Active', '2022-03-15'],
+    ['Ethan Brooks', 'e.brooks@callcore.com', 1, 'Afternoon', 'Active', '2021-08-01'],
+    ['Sophia Martinez', 's.martinez@callcore.com', 2, 'Morning', 'Active', '2023-01-10'],
+    ['Liam Johnson', 'l.johnson@callcore.com', 2, 'Evening', 'Active', '2022-11-20'],
+    ['Ava Williams', 'a.williams@callcore.com', 3, 'Morning', 'Active', '2020-05-12'],
+    ['Noah Davis', 'n.davis@callcore.com', 3, 'Afternoon', 'On Leave', '2021-02-28'],
+    ['Emma Wilson', 'e.wilson@callcore.com', 4, 'Morning', 'Active', '2022-07-04'],
+    ['Oliver Taylor', 'o.taylor@callcore.com', 4, 'Evening', 'Active', '2023-03-18'],
+    ['Isabella Anderson', 'i.anderson@callcore.com', 1, 'Night', 'Active', '2021-09-09'],
+    ['William Thomas', 'w.thomas@callcore.com', 5, 'Morning', 'Active', '2019-12-01'],
+    ['Mia Garcia', 'm.garcia@callcore.com', 1, 'Afternoon', 'Active', '2023-06-15'],
+    ['James Martinez', 'j.martinez@callcore.com', 2, 'Morning', 'Inactive', '2020-04-22'],
+    ['Charlotte Robinson', 'c.robinson@callcore.com', 4, 'Morning', 'Active', '2022-09-30'],
+    ['Benjamin Lewis', 'b.lewis@callcore.com', 3, 'Afternoon', 'Active', '2021-06-14'],
+    ['Amelia Lee', 'a.lee@callcore.com', 5, 'Evening', 'Active', '2022-02-08'],
+    ['Lucas Walker', 'l.walker@callcore.com', 1, 'Night', 'Active', '2023-04-01'],
+    ['Harper Hall', 'h.hall@callcore.com', 2, 'Afternoon', 'Active', '2021-11-17'],
+    ['Elijah Allen', 'e.allen@callcore.com', 4, 'Morning', 'Active', '2020-08-25'],
+    ['Evelyn Young', 'ev.young@callcore.com', 3, 'Evening', 'On Leave', '2022-05-03'],
+    ['Henry King', 'h.king@callcore.com', 6, 'Morning', 'Active', '2019-07-30'],
+  ];
+  agents.forEach(([n, e, d, s, st, h]) =>
+    db.run('INSERT INTO agents (name, email, department_id, shift, status, hire_date) VALUES (?, ?, ?, ?, ?, ?)', [n, e, d, s, st, h])
+  );
+
+  // Customers (50)
+  const firstNames = ['Alice','Bob','Carol','David','Emily','Frank','Grace','Henry','Iris','Jack',
+    'Karen','Leo','Maria','Nathan','Olivia','Paul','Quinn','Rachel','Sam','Tina',
+    'Uma','Victor','Wendy','Xavier','Yvonne','Zach','Aaron','Beth','Carl','Diana',
+    'Eric','Fiona','George','Helen','Ivan','Julia','Kevin','Laura','Mike','Nancy',
+    'Oscar','Patricia','Robert','Sandra','Tom','Uma','Vera','Walter','Xena','Yolanda'];
+  const lastNames = ['Smith','Jones','Brown','Davis','Miller','Wilson','Moore','Taylor','Anderson','Jackson',
+    'White','Harris','Martin','Thompson','Garcia','Martinez','Robinson','Clark','Rodriguez','Lewis',
+    'Lee','Walker','Hall','Allen','Young','Hernandez','King','Wright','Lopez','Hill',
+    'Scott','Green','Adams','Baker','Gonzalez','Nelson','Carter','Mitchell','Perez','Roberts',
+    'Turner','Phillips','Campbell','Parker','Evans','Edwards','Collins','Stewart','Sanchez','Morris'];
+  const tiers = ['Standard','Standard','Standard','Premium','Premium','VIP','Enterprise'];
+  for (let i = 0; i < 50; i++) {
+    const fn = firstNames[i], ln = lastNames[i];
+    const phone = `+1-555-${String(1000 + i * 19).slice(0, 4)}`;
+    const email = `${fn.toLowerCase()}.${ln.toLowerCase()}@email.com`;
+    const acc = `ACC-${String(10000 + i * 37)}`;
+    const tier = tiers[i % tiers.length];
+    db.run('INSERT INTO customers (name, phone, email, account_number, tier) VALUES (?, ?, ?, ?, ?)',
+      [`${fn} ${ln}`, phone, email, acc, tier]);
+  }
+
+  // Calls (220 over last 30 days)
+  const callTypes = ['Inbound', 'Outbound', 'Callback', 'Inbound', 'Inbound', 'Escalation', 'Follow-up'];
+  const outcomes = ['Resolved', 'Resolved', 'Resolved', 'Escalated', 'Voicemail', 'Callback Scheduled', 'No Answer'];
+  const noteTemplates = [
+    'Customer inquiry resolved successfully.',
+    'Billing dispute addressed and escalated to billing team.',
+    'Technical issue troubleshot remotely.',
+    'No answer — left voicemail with callback number.',
+    'Customer requested call back at different time.',
+    'Account credentials reset successfully.',
+    'Subscription upgrade completed.',
+    'Complaint logged and escalation initiated.',
+    'Follow-up on previous ticket #TKT resolved.',
+    'Outbound promotional call — customer interested.'
+  ];
+  const now = Date.now();
+  for (let i = 0; i < 220; i++) {
+    const daysAgo = Math.floor(Math.random() * 30);
+    const hoursAgo = Math.floor(Math.random() * 24);
+    const ts = new Date(now - daysAgo * 86400000 - hoursAgo * 3600000).toISOString();
+    const cust = Math.ceil(Math.random() * 50);
+    const agent = Math.ceil(Math.random() * 20);
+    const type = callTypes[i % callTypes.length];
+    const duration = 30 + Math.floor(Math.random() * 900);
+    const outcome = outcomes[i % outcomes.length];
+    const note = noteTemplates[i % noteTemplates.length];
+    db.run('INSERT INTO calls (customer_id, agent_id, call_type, duration_seconds, outcome, notes, called_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [cust, agent, type, duration, outcome, note, ts]);
+  }
+
+  // Tickets (40)
+  const issues = [
+    'Unable to access online account portal',
+    'Incorrect billing amount on recent invoice',
+    'Internet connection dropping repeatedly',
+    'Request to update contact details',
+    'Product not delivered as scheduled',
+    'Repeated unauthorized charges on account',
+    'Service outage in local area',
+    'Password reset not received via email',
+    'Complaint regarding rude customer service',
+    'Refund not processed after 2 weeks',
+    'Feature request: two-factor authentication',
+    'Account locked after failed login attempts',
+    'Data usage exceeds package limits unexpectedly',
+    'Contract renewal terms query',
+    'Request for itemized bill breakdown',
+    'Router firmware update causing issues',
+    'Mobile app crashing on iOS 17',
+    'Landline not receiving incoming calls',
+    'Upgrade to enterprise tier requested',
+    'Dispute resolution follow-up pending'
+  ];
+  const statuses = ['Open', 'Open', 'Open', 'In Progress', 'In Progress', 'Resolved'];
+  const priorities = ['Low', 'Medium', 'Medium', 'High', 'Critical'];
+  const categories = ['Billing', 'Technical', 'Account', 'General', 'Complaint'];
+  for (let i = 0; i < 40; i++) {
+    const daysAgo = Math.floor(Math.random() * 14);
+    const ts = new Date(now - daysAgo * 86400000).toISOString();
+    const cust = Math.ceil(Math.random() * 50);
+    const agent = Math.ceil(Math.random() * 20);
+    const issue = issues[i % issues.length];
+    const status = statuses[i % statuses.length];
+    const priority = priorities[i % priorities.length];
+    const category = categories[i % categories.length];
+    const resolvedAt = status === 'Resolved' ? new Date(now - Math.floor(Math.random() * 86400000)).toISOString() : null;
+    db.run('INSERT INTO tickets (customer_id, agent_id, issue, priority, category, status, created_at, resolved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [cust, agent, issue, priority, category, status, ts, resolvedAt]);
+  }
+
+  // Performance reviews
+  for (let a = 1; a <= 20; a++) {
+    db.run(`INSERT INTO performance_reviews (agent_id, review_date, calls_handled, avg_duration, resolution_rate, csat_score) VALUES (?, ?, ?, ?, ?, ?)`,
+      [a, new Date(now - 7 * 86400000).toISOString().split('T')[0],
+        10 + Math.floor(Math.random() * 40),
+        120 + Math.floor(Math.random() * 300),
+        0.6 + Math.random() * 0.4,
+        3.5 + Math.random() * 1.5]);
+  }
+}
+
+function updateDBStats() {
+  const calls = queryVal('SELECT COUNT(*) FROM calls') || 0;
+  const agents = queryVal('SELECT COUNT(*) FROM agents') || 0;
+  const customers = queryVal('SELECT COUNT(*) FROM customers') || 0;
+  document.getElementById('dbStats').textContent = `${calls} calls · ${agents} agents · ${customers} customers`;
+  const openTickets = queryVal("SELECT COUNT(*) FROM tickets WHERE status != 'Resolved'") || 0;
+  document.getElementById('openTicketBadge').textContent = openTickets;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHART HELPERS
+// ═══════════════════════════════════════════════════════════
+const chartDefaults = {
+  color: '#94a3b8',
+  borderColor: 'rgba(255,255,255,0.05)',
+};
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, config);
+}
+
+const accentGradient = ['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#10b981','#f59e0b','#ef4444','#3b82f6'];
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function renderDashboard() {
+  // KPIs
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+  const callsToday = queryVal(`SELECT COUNT(*) FROM calls WHERE DATE(called_at) = '${today}'`) || 0;
+  const callsYesterday = queryVal(`SELECT COUNT(*) FROM calls WHERE DATE(called_at) = '${yesterday}'`) || 0;
+  const activeAgents = queryVal(`SELECT COUNT(*) FROM agents WHERE status = 'Active'`) || 0;
+  const totalAgents = queryVal(`SELECT COUNT(*) FROM agents`) || 0;
+  const openTickets = queryVal(`SELECT COUNT(*) FROM tickets WHERE status != 'Resolved'`) || 0;
+  const criticalTickets = queryVal(`SELECT COUNT(*) FROM tickets WHERE priority = 'Critical' AND status != 'Resolved'`) || 0;
+  const avgDuration = Math.round(queryVal(`SELECT AVG(duration_seconds) FROM calls WHERE DATE(called_at) = '${today}'`) || 0);
+  const avgDurationAll = Math.round(queryVal(`SELECT AVG(duration_seconds) FROM calls`) || 0);
+
+  document.getElementById('kpi-calls-today').textContent = callsToday;
+  const callDiff = callsToday - callsYesterday;
+  document.getElementById('kpi-calls-change').textContent =
+    (callDiff >= 0 ? '↑ ' : '↓ ') + Math.abs(callDiff) + ' vs yesterday';
+  document.getElementById('kpi-calls-change').className = 'kpi-change ' + (callDiff >= 0 ? 'up' : 'down');
+
+  document.getElementById('kpi-active-agents').textContent = activeAgents;
+  document.getElementById('kpi-agents-info').textContent = `${totalAgents - activeAgents} unavailable`;
+
+  document.getElementById('kpi-open-tickets').textContent = openTickets;
+  document.getElementById('kpi-tickets-change').textContent = `${criticalTickets} critical pending`;
+  document.getElementById('kpi-tickets-change').className = 'kpi-change ' + (criticalTickets > 0 ? 'down' : 'up');
+
+  document.getElementById('kpi-avg-duration').textContent = fmtDuration(avgDuration || avgDurationAll);
+  document.getElementById('kpi-duration-change').textContent = `Overall avg ${fmtDuration(avgDurationAll)}`;
+
+  // Chart: Volume last 14 days
+  const volumeData = [];
+  const volumeLabels = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().split('T')[0];
+    const c = queryVal(`SELECT COUNT(*) FROM calls WHERE DATE(called_at) = '${d}'`) || 0;
+    volumeLabels.push(new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    volumeData.push(c);
+  }
+  makeChart('chartVolume', {
+    type: 'line',
+    data: {
+      labels: volumeLabels,
+      datasets: [{
+        label: 'Calls',
+        data: volumeData,
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99,102,241,0.1)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#6366f1',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Chart: Call Types
+  const typeRows = queryRows('SELECT call_type, COUNT(*) as cnt FROM calls GROUP BY call_type');
+  makeChart('chartType', {
+    type: 'doughnut',
+    data: {
+      labels: typeRows.map(r => r.call_type),
+      datasets: [{
+        data: typeRows.map(r => r.cnt),
+        backgroundColor: accentGradient.slice(0, typeRows.length),
+        borderWidth: 2,
+        borderColor: '#0f1420',
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 10 } } }
+    }
+  });
+
+  // Recent Calls
+  const recentCalls = queryRows(`
+    SELECT c.id, cu.name cust, a.name agent, c.call_type, c.duration_seconds, c.outcome, c.called_at
+    FROM calls c
+    JOIN customers cu ON cu.id = c.customer_id
+    JOIN agents a ON a.id = c.agent_id
+    ORDER BY c.called_at DESC LIMIT 8
+  `);
+  document.getElementById('dashRecentCalls').innerHTML = recentCalls.length ? `
+    <table><thead><tr><th>Customer</th><th>Agent</th><th>Type</th><th>Duration</th><th>Outcome</th></tr></thead>
+    <tbody>${recentCalls.map(r => `
+      <tr>
+        <td>${r.cust}</td>
+        <td>${r.agent}</td>
+        <td>${typeBadge(r.call_type)}</td>
+        <td>${fmtDuration(r.duration_seconds)}</td>
+        <td>${outcomeBadge(r.outcome)}</td>
+      </tr>`).join('')}
+    </tbody></table>` : '<div class="empty-state"><div class="empty-icon">📞</div><div class="empty-text">No calls today</div></div>';
+
+  // Urgent Tickets
+  const urgentTickets = queryRows(`
+    SELECT t.id, cu.name cust, t.issue, t.priority, t.status
+    FROM tickets t JOIN customers cu ON cu.id = t.customer_id
+    WHERE t.priority IN ('Critical', 'High') AND t.status != 'Resolved'
+    ORDER BY CASE t.priority WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 ELSE 3 END
+    LIMIT 6
+  `);
+  document.getElementById('dashUrgentTickets').innerHTML = urgentTickets.length ? urgentTickets.map(t => `
+    <div class="ticket-item" onclick="navigate('tickets')">
+      <div class="ticket-id">TKT-${String(t.id).padStart(4,'0')}</div>
+      <div class="ticket-issue">${t.issue}</div>
+      <div class="ticket-meta">${priorityBadge(t.priority)} <span>${t.cust}</span></div>
+    </div>`) .join('') : '<div class="empty-state"><div class="empty-icon">🎫</div><div class="empty-text">No urgent tickets</div></div>';
+
+  // Top Agents Today
+  const topAgents = queryRows(`
+    SELECT a.name, d.name dept, COUNT(c.id) calls, ROUND(AVG(c.duration_seconds)) avg_dur
+    FROM calls c
+    JOIN agents a ON a.id = c.agent_id
+    JOIN departments d ON d.id = a.department_id
+    WHERE DATE(c.called_at) = '${today}'
+    GROUP BY a.id ORDER BY calls DESC LIMIT 8
+  `);
+  document.getElementById('dashTopAgents').innerHTML = topAgents.length ? `
+    <table><thead><tr><th>#</th><th>Agent</th><th>Department</th><th>Calls Today</th><th>Avg Duration</th></tr></thead>
+    <tbody>${topAgents.map((a, i) => `
+      <tr>
+        <td><span style="font-weight:700;color:var(--accent3)">${i + 1}</span></td>
+        <td>${a.name}</td>
+        <td>${a.dept}</td>
+        <td><strong>${a.calls}</strong></td>
+        <td>${fmtDuration(a.avg_dur)}</td>
+      </tr>`).join('')}
+    </tbody></table>` : '<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-text">No calls logged today yet</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CALLS
+// ═══════════════════════════════════════════════════════════
+let allCalls = [];
+
+function renderCalls() {
+  // Populate dept filter
+  const depts = queryRows('SELECT name FROM departments ORDER BY name');
+  const deptFilter = document.getElementById('callDeptFilter');
+  deptFilter.innerHTML = '<option value="">All Departments</option>' +
+    depts.map(d => `<option>${d.name}</option>`).join('');
+
+  // Populate call form dropdowns
+  const customers = queryRows('SELECT id, name FROM customers ORDER BY name');
+  document.getElementById('callCustomerId').innerHTML =
+    customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const agents = queryRows("SELECT id, name FROM agents WHERE status = 'Active' ORDER BY name");
+  document.getElementById('callAgentId').innerHTML =
+    agents.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  // Default timestamp
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById('callTimestamp').value = now.toISOString().slice(0, 16);
+
+  allCalls = queryRows(`
+    SELECT c.id, c.called_at, cu.name cust, a.name agent, d.name dept, c.call_type, c.duration_seconds, c.outcome, c.notes
+    FROM calls c
+    JOIN customers cu ON cu.id = c.customer_id
+    JOIN agents a ON a.id = c.agent_id
+    JOIN departments d ON d.id = a.department_id
+    ORDER BY c.called_at DESC
+  `);
+  renderCallsTable(allCalls);
+}
+
+function renderCallsTable(rows) {
+  const tbody = document.getElementById('callsTable');
+  tbody.innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td><span style="color:var(--accent3);font-weight:600">#${r.id}</span></td>
+      <td>${fmtDateTime(r.called_at)}</td>
+      <td>${r.cust}</td>
+      <td>${r.agent} <span class="text-sm">(${r.dept})</span></td>
+      <td>${typeBadge(r.call_type)}</td>
+      <td>${fmtDuration(r.duration_seconds)}</td>
+      <td>${outcomeBadge(r.outcome)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteCall(${r.id})">🗑️</button></td>
+    </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3)">No calls found</td></tr>';
+}
+
+function filterCalls() {
+  const search = document.getElementById('callSearch').value.toLowerCase();
+  const type = document.getElementById('callTypeFilter').value;
+  const outcome = document.getElementById('callOutcomeFilter').value;
+  const dept = document.getElementById('callDeptFilter').value;
+  const filtered = allCalls.filter(r =>
+    (!search || r.cust.toLowerCase().includes(search) || r.agent.toLowerCase().includes(search)) &&
+    (!type || r.call_type === type) &&
+    (!outcome || r.outcome === outcome) &&
+    (!dept || r.dept === dept)
+  );
+  renderCallsTable(filtered);
+}
+
+function clearCallFilters() {
+  document.getElementById('callSearch').value = '';
+  document.getElementById('callTypeFilter').value = '';
+  document.getElementById('callOutcomeFilter').value = '';
+  document.getElementById('callDeptFilter').value = '';
+  renderCallsTable(allCalls);
+}
+
+function logCall() {
+  const custId = document.getElementById('callCustomerId').value;
+  const agentId = document.getElementById('callAgentId').value;
+  const type = document.getElementById('callType').value;
+  const duration = parseInt(document.getElementById('callDuration').value) || 60;
+  const outcome = document.getElementById('callOutcome').value;
+  const notes = document.getElementById('callNotes').value;
+  const ts = document.getElementById('callTimestamp').value;
+  if (!custId || !agentId) { toast('Please select customer and agent', 'error'); return; }
+  db.run('INSERT INTO calls (customer_id, agent_id, call_type, duration_seconds, outcome, notes, called_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [custId, agentId, type, duration, outcome, notes, ts]);
+  closeModal('modalLogCall');
+  toast('Call logged successfully!', 'success');
+  renderCalls();
+  updateDBStats();
+  document.getElementById('callNotes').value = '';
+}
+
+function deleteCall(id) {
+  if (!confirm('Delete this call record?')) return;
+  db.run('DELETE FROM calls WHERE id = ?', [id]);
+  toast('Call deleted', 'info');
+  renderCalls();
+  updateDBStats();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  AGENTS
+// ═══════════════════════════════════════════════════════════
+let allAgentsData = [];
+
+function renderAgents() {
+  const depts = queryRows('SELECT id, name FROM departments ORDER BY name');
+  ['agentDeptId', 'editAgentDeptId', 'agentDeptFilter'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const isFilter = id === 'agentDeptFilter';
+    el.innerHTML = (isFilter ? '<option value="">All Departments</option>' : '') +
+      depts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+  });
+
+  // Set today default
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('agentHireDate').value = today;
+
+  allAgentsData = queryRows(`
+    SELECT a.id, a.name, a.email, d.name dept, d.id dept_id, a.shift, a.status, a.hire_date,
+      COUNT(c.id) total_calls,
+      ROUND(AVG(c.duration_seconds)) avg_dur
+    FROM agents a
+    LEFT JOIN departments d ON d.id = a.department_id
+    LEFT JOIN calls c ON c.agent_id = a.id
+    GROUP BY a.id
+    ORDER BY a.name
+  `);
+
+  if (agentViewMode === 'card') {
+    renderAgentCards(allAgentsData);
+  } else {
+    renderAgentTable(allAgentsData);
+  }
+}
+
+function filterAgents() {
+  const search = document.getElementById('agentSearch').value.toLowerCase();
+  const dept = document.getElementById('agentDeptFilter').value;
+  const status = document.getElementById('agentStatusFilter').value;
+  const filtered = allAgentsData.filter(a =>
+    (!search || a.name.toLowerCase().includes(search) || a.email.toLowerCase().includes(search)) &&
+    (!dept || String(a.dept_id) === dept) &&
+    (!status || a.status === status)
+  );
+  if (agentViewMode === 'card') renderAgentCards(filtered);
+  else renderAgentTable(filtered);
+}
+
+function toggleAgentView() {
+  agentViewMode = agentViewMode === 'card' ? 'table' : 'card';
+  document.getElementById('agentViewToggle').textContent = agentViewMode === 'card' ? '🗃️ Table View' : '🃏 Card View';
+  document.getElementById('agentCardView').style.display = agentViewMode === 'card' ? 'grid' : 'none';
+  document.getElementById('agentTableView').style.display = agentViewMode === 'table' ? 'block' : 'none';
+  filterAgents();
+}
+
+const avatarColors = ['#6366f1','#8b5cf6','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899','#14b8a6'];
+
+function renderAgentCards(agents) {
+  const grid = document.getElementById('agentCardView');
+  grid.innerHTML = agents.length ? agents.map((a, i) => `
+    <div class="agent-card" onclick="openAgentProfile(${a.id})">
+      <div class="agent-avatar" style="background:linear-gradient(135deg,${avatarColors[i%8]},${avatarColors[(i+2)%8]})">${initials(a.name)}</div>
+      <div class="agent-name">${a.name}</div>
+      <div class="agent-role">${a.dept || '—'} · ${a.shift}</div>
+      ${statusBadge(a.status)}
+      <div class="agent-stats">
+        <div class="agent-stat">
+          <div class="agent-stat-val text-accent">${a.total_calls || 0}</div>
+          <div class="agent-stat-label">Calls</div>
+        </div>
+        <div class="agent-stat">
+          <div class="agent-stat-val text-accent">${fmtDuration(a.avg_dur)}</div>
+          <div class="agent-stat-label">Avg Time</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:12px">
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openEditAgent(${a.id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteAgent(${a.id})">🗑️</button>
+      </div>
+    </div>`).join('') : '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">👤</div><div class="empty-text">No agents found</div></div>';
+}
+
+function renderAgentTable(agents) {
+  document.getElementById('agentsTableBody').innerHTML = agents.length ?
+    agents.map(a => `
+      <tr>
+        <td>${a.id}</td>
+        <td>${a.name}</td>
+        <td>${a.dept || '—'}</td>
+        <td>${a.shift}</td>
+        <td>${statusBadge(a.status)}</td>
+        <td>${a.total_calls || 0}</td>
+        <td>${fmtDuration(a.avg_dur)}</td>
+        <td style="display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm" onclick="openAgentProfile(${a.id})">👁️</button>
+          <button class="btn btn-secondary btn-sm" onclick="openEditAgent(${a.id})">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAgent(${a.id})">🗑️</button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3)">No agents found</td></tr>';
+}
+
+function addAgent() {
+  const name = document.getElementById('agentName').value.trim();
+  const email = document.getElementById('agentEmail').value.trim();
+  const deptId = document.getElementById('agentDeptId').value;
+  const shift = document.getElementById('agentShift').value;
+  const status = document.getElementById('agentStatus').value;
+  const hireDate = document.getElementById('agentHireDate').value;
+  if (!name || !email) { toast('Name and email are required', 'error'); return; }
+  try {
+    db.run('INSERT INTO agents (name, email, department_id, shift, status, hire_date) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, deptId, shift, status, hireDate]);
+    closeModal('modalAddAgent');
+    toast('Agent added successfully!', 'success');
+    document.getElementById('agentName').value = '';
+    document.getElementById('agentEmail').value = '';
+    renderAgents();
+    updateDBStats();
+  } catch (e) {
+    toast('Email already exists!', 'error');
+  }
+}
+
+function openEditAgent(id) {
+  const a = queryOne('SELECT * FROM agents WHERE id = ?', [id]);
+  if (!a) return;
+  document.getElementById('editAgentId').value = a.id;
+  document.getElementById('editAgentName').value = a.name;
+  document.getElementById('editAgentEmail').value = a.email;
+  const deptEl = document.getElementById('editAgentDeptId');
+  if (deptEl) deptEl.value = a.department_id;
+  document.getElementById('editAgentShift').value = a.shift;
+  document.getElementById('editAgentStatus').value = a.status;
+  openModal('modalEditAgent');
+}
+
+function saveEditAgent() {
+  const id = document.getElementById('editAgentId').value;
+  const name = document.getElementById('editAgentName').value.trim();
+  const email = document.getElementById('editAgentEmail').value.trim();
+  const deptId = document.getElementById('editAgentDeptId').value;
+  const shift = document.getElementById('editAgentShift').value;
+  const status = document.getElementById('editAgentStatus').value;
+  if (!name || !email) { toast('Name and email are required', 'error'); return; }
+  db.run('UPDATE agents SET name=?, email=?, department_id=?, shift=?, status=? WHERE id=?',
+    [name, email, deptId, shift, status, id]);
+  closeModal('modalEditAgent');
+  toast('Agent updated!', 'success');
+  renderAgents();
+  updateDBStats();
+}
+
+function deleteAgent(id) {
+  if (!confirm('Delete this agent? Their call records will remain.')) return;
+  db.run('DELETE FROM agents WHERE id = ?', [id]);
+  toast('Agent removed', 'info');
+  renderAgents();
+  updateDBStats();
+}
+
+function openAgentProfile(id) {
+  const a = queryOne(`
+    SELECT a.*, d.name dept, COUNT(c.id) total_calls,
+      ROUND(AVG(c.duration_seconds)) avg_dur,
+      SUM(CASE WHEN c.outcome = 'Resolved' THEN 1 ELSE 0 END) resolved
+    FROM agents a
+    LEFT JOIN departments d ON d.id = a.department_id
+    LEFT JOIN calls c ON c.agent_id = a.id
+    WHERE a.id = ?`, [id]);
+  if (!a) return;
+  const recentCalls = queryRows(`
+    SELECT c.call_type, c.duration_seconds, c.outcome, c.called_at, cu.name cust
+    FROM calls c JOIN customers cu ON cu.id = c.customer_id
+    WHERE c.agent_id = ? ORDER BY c.called_at DESC LIMIT 10`, [id]);
+  const resRate = a.total_calls > 0 ? Math.round((a.resolved / a.total_calls) * 100) : 0;
+  document.getElementById('agentProfileTitle').textContent = `👤 ${a.name}`;
+  document.getElementById('agentProfileBody').innerHTML = `
+    <div style="display:flex;gap:20px;align-items:center;margin-bottom:20px">
+      <div class="agent-avatar" style="width:72px;height:72px;font-size:28px">${initials(a.name)}</div>
+      <div>
+        <div style="font-size:20px;font-weight:700">${a.name}</div>
+        <div style="color:var(--text3);font-size:13px">${a.email}</div>
+        <div style="margin-top:8px;display:flex;gap:8px">${statusBadge(a.status)}<span class="badge badge-blue">${a.dept || 'No Dept'}</span><span class="badge badge-gray">${a.shift} Shift</span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+      ${[['Total Calls', a.total_calls || 0, '📞'],['Resolved', a.resolved || 0, '✅'],['Resolution Rate', resRate + '%', '📊'],['Avg Duration', fmtDuration(a.avg_dur), '⏱️']].map(([l,v,i]) => `
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:20px">${i}</div>
+          <div style="font-size:22px;font-weight:800;color:var(--accent3)">${v}</div>
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase">${l}</div>
+        </div>`).join('')}
+    </div>
+    <div style="margin-bottom:8px"><strong>Resolution Rate</strong></div>
+    <div class="progress-bar" style="margin-bottom:20px">
+      <div class="progress-fill" style="width:${resRate}%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">Recent Calls</div>
+    ${recentCalls.length ? `<table><thead><tr><th>Customer</th><th>Type</th><th>Duration</th><th>Outcome</th><th>Date</th></tr></thead>
+    <tbody>${recentCalls.map(c => `<tr><td>${c.cust}</td><td>${typeBadge(c.call_type)}</td><td>${fmtDuration(c.duration_seconds)}</td><td>${outcomeBadge(c.outcome)}</td><td>${fmtDateTime(c.called_at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state"><div class="empty-text">No calls yet</div></div>'}
+  `;
+  openModal('modalAgentProfile');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CUSTOMERS
+// ═══════════════════════════════════════════════════════════
+let allCustomersData = [];
+
+function renderCustomers() {
+  allCustomersData = queryRows(`
+    SELECT cu.id, cu.name, cu.phone, cu.email, cu.account_number, cu.tier, COUNT(c.id) total_calls
+    FROM customers cu LEFT JOIN calls c ON c.customer_id = cu.id
+    GROUP BY cu.id ORDER BY cu.name
+  `);
+  // Populate ticket/call modals
+  const custs = queryRows('SELECT id, name FROM customers ORDER BY name');
+  ['ticketCustomerId'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = custs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  });
+  const agts = queryRows("SELECT id, name FROM agents WHERE status='Active' ORDER BY name");
+  ['ticketAgentId'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = agts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  });
+  renderCustomersTable(allCustomersData);
+}
+
+function renderCustomersTable(rows) {
+  document.getElementById('customersTable').innerHTML = rows.length ?
+    rows.map(r => `
+      <tr>
+        <td>#${r.id}</td>
+        <td>${r.name}</td>
+        <td>${r.phone}</td>
+        <td>${r.email}</td>
+        <td style="font-family:monospace;font-size:12px">${r.account_number}</td>
+        <td>${tierBadge(r.tier)}</td>
+        <td>${r.total_calls}</td>
+        <td style="display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm" onclick="openCustomerHistory(${r.id})">📋 History</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${r.id})">🗑️</button>
+        </td>
+      </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3)">No customers found</td></tr>';
+}
+
+function filterCustomers() {
+  const search = document.getElementById('customerSearch').value.toLowerCase();
+  const tier = document.getElementById('customerTierFilter').value;
+  const filtered = allCustomersData.filter(r =>
+    (!search || r.name.toLowerCase().includes(search) || (r.email||'').toLowerCase().includes(search) || (r.phone||'').includes(search)) &&
+    (!tier || r.tier === tier)
+  );
+  renderCustomersTable(filtered);
+}
+
+function addCustomer() {
+  const name = document.getElementById('custName').value.trim();
+  const phone = document.getElementById('custPhone').value.trim();
+  const email = document.getElementById('custEmail').value.trim();
+  const acc = document.getElementById('custAccount').value.trim() || `ACC-${Date.now()}`;
+  const tier = document.getElementById('custTier').value;
+  if (!name) { toast('Customer name is required', 'error'); return; }
+  try {
+    db.run('INSERT INTO customers (name, phone, email, account_number, tier) VALUES (?, ?, ?, ?, ?)',
+      [name, phone, email, acc, tier]);
+    closeModal('modalAddCustomer');
+    toast('Customer added!', 'success');
+    document.getElementById('custName').value = '';
+    document.getElementById('custPhone').value = '';
+    document.getElementById('custEmail').value = '';
+    renderCustomers();
+    updateDBStats();
+  } catch (e) {
+    toast('Account number already exists!', 'error');
+  }
+}
+
+function deleteCustomer(id) {
+  if (!confirm('Delete this customer? Their calls and tickets will remain.')) return;
+  db.run('DELETE FROM customers WHERE id = ?', [id]);
+  toast('Customer removed', 'info');
+  renderCustomers();
+  updateDBStats();
+}
+
+function openCustomerHistory(id) {
+  const cu = queryOne('SELECT * FROM customers WHERE id = ?', [id]);
+  if (!cu) return;
+  const calls = queryRows(`
+    SELECT c.call_type, c.duration_seconds, c.outcome, c.called_at, a.name agent
+    FROM calls c JOIN agents a ON a.id = c.agent_id
+    WHERE c.customer_id = ? ORDER BY c.called_at DESC LIMIT 15`, [id]);
+  const tickets = queryRows(`
+    SELECT t.id, t.issue, t.priority, t.status, t.created_at
+    FROM tickets t WHERE t.customer_id = ? ORDER BY t.created_at DESC LIMIT 5`, [id]);
+  document.getElementById('custHistTitle').textContent = `📋 ${cu.name}`;
+  document.getElementById('custHistBody').innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:16px">${tierBadge(cu.tier)}<span style="font-size:12px;color:var(--text3)">${cu.email} · ${cu.phone} · ${cu.account_number}</span></div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">📞 Call History (${calls.length})</div>
+    ${calls.length ? `<table><thead><tr><th>Type</th><th>Agent</th><th>Duration</th><th>Outcome</th><th>Date</th></tr></thead>
+    <tbody>${calls.map(c => `<tr><td>${typeBadge(c.call_type)}</td><td>${c.agent}</td><td>${fmtDuration(c.duration_seconds)}</td><td>${outcomeBadge(c.outcome)}</td><td>${fmtDateTime(c.called_at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state" style="padding:20px"><div class="empty-text">No calls</div></div>'}
+    <hr class="divider">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px">🎫 Tickets (${tickets.length})</div>
+    ${tickets.length ? `<table><thead><tr><th>ID</th><th>Issue</th><th>Priority</th><th>Status</th><th>Created</th></tr></thead>
+    <tbody>${tickets.map(t => `<tr><td>TKT-${String(t.id).padStart(4,'0')}</td><td>${t.issue}</td><td>${priorityBadge(t.priority)}</td><td>${outcomeBadge(t.status)}</td><td>${fmtDate(t.created_at)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty-state" style="padding:20px"><div class="empty-text">No tickets</div></div>'}
+  `;
+  openModal('modalCustomerHistory');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TICKETS
+// ═══════════════════════════════════════════════════════════
+function renderTickets() {
+  // Ensure dropdowns for ticket modal are populated
+  const custs = queryRows('SELECT id, name FROM customers ORDER BY name');
+  document.getElementById('ticketCustomerId').innerHTML =
+    custs.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  const agts = queryRows("SELECT id, name FROM agents WHERE status='Active' ORDER BY name");
+  document.getElementById('ticketAgentId').innerHTML =
+    agts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+  const tickets = queryRows(`
+    SELECT t.id, cu.name cust, a.name agent, t.issue, t.priority, t.category, t.status, t.created_at, t.details
+    FROM tickets t
+    JOIN customers cu ON cu.id = t.customer_id
+    LEFT JOIN agents a ON a.id = t.agent_id
+    ORDER BY CASE t.priority WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 WHEN 'Medium' THEN 3 ELSE 4 END, t.created_at DESC
+  `);
+
+  const open = tickets.filter(t => t.status === 'Open');
+  const inprog = tickets.filter(t => t.status === 'In Progress');
+  const resolved = tickets.filter(t => t.status === 'Resolved');
+
+  document.getElementById('ticketCountOpen').textContent = open.length;
+  document.getElementById('ticketCountProgress').textContent = inprog.length;
+  document.getElementById('ticketCountResolved').textContent = resolved.length;
+
+  const renderTicketCard = t => `
+    <div class="ticket-item" onclick="openTicketDetail(${t.id})">
+      <div class="ticket-id">TKT-${String(t.id).padStart(4,'0')} · ${t.category}</div>
+      <div class="ticket-issue">${t.issue}</div>
+      <div class="ticket-meta">${priorityBadge(t.priority)} <span>${t.cust}</span></div>
+      <div class="ticket-meta" style="margin-top:4px"><span>👤 ${t.agent || 'Unassigned'}</span> · <span>${fmtDate(t.created_at)}</span></div>
+    </div>`;
+
+  document.getElementById('ticketColOpen').innerHTML = open.length ? open.map(renderTicketCard).join('') : '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">No open tickets</div>';
+  document.getElementById('ticketColProgress').innerHTML = inprog.length ? inprog.map(renderTicketCard).join('') : '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">None in progress</div>';
+  document.getElementById('ticketColResolved').innerHTML = resolved.length ? resolved.map(renderTicketCard).join('') : '<div style="color:var(--text3);font-size:12px;text-align:center;padding:16px">No resolved tickets</div>';
+
+  // Table view
+  document.getElementById('ticketsTableBody').innerHTML = tickets.length ?
+    tickets.map(t => `
+      <tr onclick="openTicketDetail(${t.id})" style="cursor:pointer">
+        <td>TKT-${String(t.id).padStart(4,'0')}</td>
+        <td>${t.cust}</td>
+        <td>${t.issue}</td>
+        <td>${priorityBadge(t.priority)}</td>
+        <td>${t.status === 'Open' ? '<span class="badge badge-red">Open</span>' : t.status === 'In Progress' ? '<span class="badge badge-orange">In Progress</span>' : '<span class="badge badge-green">Resolved</span>'}</td>
+        <td>${t.agent || 'Unassigned'}</td>
+        <td>${fmtDate(t.created_at)}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openTicketDetail(${t.id})">View</button></td>
+      </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3)">No tickets found</td></tr>';
+
+  updateDBStats();
+}
+
+function toggleTicketView() {
+  ticketViewMode = ticketViewMode === 'board' ? 'list' : 'board';
+  document.getElementById('ticketViewToggle').textContent = ticketViewMode === 'board' ? '📋 List View' : '🗃️ Board View';
+  document.getElementById('ticketBoardView').style.display = ticketViewMode === 'board' ? 'block' : 'none';
+  document.getElementById('ticketListView').style.display = ticketViewMode === 'list' ? 'block' : 'none';
+}
+
+function openTicketDetail(id) {
+  currentTicketId = id;
+  const t = queryOne(`
+    SELECT t.*, cu.name cust, a.name agent
+    FROM tickets t JOIN customers cu ON cu.id = t.customer_id
+    LEFT JOIN agents a ON a.id = t.agent_id WHERE t.id = ?`, [id]);
+  if (!t) return;
+  document.getElementById('ticketDetailTitle').textContent = `🎫 TKT-${String(t.id).padStart(4,'0')}`;
+  document.getElementById('ticketDetailBody').innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      ${priorityBadge(t.priority)}
+      ${t.status === 'Open' ? '<span class="badge badge-red">Open</span>' : t.status === 'In Progress' ? '<span class="badge badge-orange">In Progress</span>' : '<span class="badge badge-green">Resolved</span>'}
+      <span class="badge badge-blue">${t.category}</span>
+    </div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:12px">${t.issue}</div>
+    <div style="color:var(--text2);font-size:13px;margin-bottom:16px">${t.details || 'No additional details provided.'}</div>
+    <hr class="divider">
+    <div class="two-col" style="gap:16px">
+      <div>
+        <div class="form-label">Customer</div>
+        <div style="margin-top:4px">${t.cust}</div>
+      </div>
+      <div>
+        <div class="form-label">Assigned Agent</div>
+        <div style="margin-top:4px">${t.agent || 'Unassigned'}</div>
+      </div>
+      <div>
+        <div class="form-label">Created</div>
+        <div style="margin-top:4px">${fmtDateTime(t.created_at)}</div>
+      </div>
+      <div>
+        <div class="form-label">Resolved</div>
+        <div style="margin-top:4px">${t.resolved_at ? fmtDateTime(t.resolved_at) : '—'}</div>
+      </div>
+    </div>
+  `;
+  openModal('modalTicketDetail');
+}
+
+function updateTicketStatus(status) {
+  if (!currentTicketId) return;
+  const resolvedAt = status === 'Resolved' ? new Date().toISOString() : null;
+  db.run('UPDATE tickets SET status=?, resolved_at=? WHERE id=?', [status, resolvedAt, currentTicketId]);
+  closeModal('modalTicketDetail');
+  toast(`Ticket marked as ${status}`, 'success');
+  renderTickets();
+}
+
+function deleteTicketFromDetail() {
+  if (!currentTicketId || !confirm('Delete this ticket?')) return;
+  db.run('DELETE FROM tickets WHERE id=?', [currentTicketId]);
+  closeModal('modalTicketDetail');
+  toast('Ticket deleted', 'info');
+  renderTickets();
+}
+
+function addTicket() {
+  const custId = document.getElementById('ticketCustomerId').value;
+  const agentId = document.getElementById('ticketAgentId').value;
+  const issue = document.getElementById('ticketIssue').value.trim();
+  const priority = document.getElementById('ticketPriority').value;
+  const category = document.getElementById('ticketCategory').value;
+  const details = document.getElementById('ticketDetails').value;
+  if (!issue) { toast('Issue summary is required', 'error'); return; }
+  db.run('INSERT INTO tickets (customer_id, agent_id, issue, priority, category, details, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [custId, agentId, issue, priority, category, details, 'Open']);
+  closeModal('modalAddTicket');
+  toast('Ticket created!', 'success');
+  document.getElementById('ticketIssue').value = '';
+  document.getElementById('ticketDetails').value = '';
+  renderTickets();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ANALYTICS
+// ═══════════════════════════════════════════════════════════
+function renderAnalytics() {
+  // Calls by Department
+  const deptCalls = queryRows(`
+    SELECT d.name dept, COUNT(c.id) cnt FROM calls c
+    JOIN agents a ON a.id = c.agent_id
+    JOIN departments d ON d.id = a.department_id
+    GROUP BY d.id ORDER BY cnt DESC`);
+  makeChart('chartDeptCalls', {
+    type: 'bar',
+    data: {
+      labels: deptCalls.map(r => r.dept),
+      datasets: [{
+        label: 'Calls',
+        data: deptCalls.map(r => r.cnt),
+        backgroundColor: accentGradient.slice(0, deptCalls.length),
+        borderRadius: 6, borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+
+  // Resolution Rates
+  const outcomes = queryRows(`SELECT outcome, COUNT(*) cnt FROM calls GROUP BY outcome ORDER BY cnt DESC`);
+  makeChart('chartResolution', {
+    type: 'pie',
+    data: {
+      labels: outcomes.map(r => r.outcome),
+      datasets: [{
+        data: outcomes.map(r => r.cnt),
+        backgroundColor: ['#10b981','#ef4444','#6366f1','#f59e0b','#94a3b8'],
+        borderColor: '#0f1420', borderWidth: 2, hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { font: { size: 10 }, padding: 8 } } }
+    }
+  });
+
+  // Avg Handle Time by Dept
+  const handleTimes = queryRows(`
+    SELECT d.name dept, ROUND(AVG(c.duration_seconds)) avg_sec FROM calls c
+    JOIN agents a ON a.id = c.agent_id
+    JOIN departments d ON d.id = a.department_id
+    GROUP BY d.id ORDER BY avg_sec DESC`);
+  makeChart('chartHandleTime', {
+    type: 'bar',
+    data: {
+      labels: handleTimes.map(r => r.dept),
+      datasets: [{
+        label: 'Avg Seconds',
+        data: handleTimes.map(r => r.avg_sec),
+        backgroundColor: 'rgba(99,102,241,0.7)',
+        borderRadius: 6, borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Leaderboard
+  const leaders = queryRows(`
+    SELECT a.name, d.name dept, COUNT(c.id) calls,
+      SUM(CASE WHEN c.outcome='Resolved' THEN 1 ELSE 0 END) resolved
+    FROM calls c JOIN agents a ON a.id=c.agent_id JOIN departments d ON d.id=a.department_id
+    GROUP BY a.id ORDER BY calls DESC LIMIT 10`);
+  document.getElementById('leaderboardList').innerHTML = leaders.map((l, i) => {
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+    const resRate = l.calls > 0 ? Math.round((l.resolved / l.calls) * 100) : 0;
+    return `
+      <div class="leaderboard-item">
+        <div class="leaderboard-rank ${rankClass}">${i + 1}</div>
+        <div class="leaderboard-info">
+          <div class="leaderboard-name">${l.name}</div>
+          <div class="leaderboard-dept">${l.dept} · ${resRate}% resolution</div>
+        </div>
+        <div class="leaderboard-score">${l.calls} calls</div>
+      </div>`;
+  }).join('') || '<div class="empty-state"><div class="empty-text">No data</div></div>';
+
+  // Outcome Summary
+  const outcomeSummary = queryRows('SELECT outcome, COUNT(*) cnt, ROUND(AVG(duration_seconds)) avg_dur FROM calls GROUP BY outcome ORDER BY cnt DESC');
+  const total = outcomeSummary.reduce((s, r) => s + r.cnt, 0);
+  document.getElementById('outcomeSummary').innerHTML = outcomeSummary.map(r => {
+    const pct = Math.round((r.cnt / total) * 100);
+    const colorMap = { 'Resolved': '#10b981', 'Escalated': '#ef4444', 'Voicemail': '#6366f1', 'No Answer': '#94a3b8', 'Callback Scheduled': '#f59e0b' };
+    const color = colorMap[r.outcome] || '#6366f1';
+    return `
+      <div style="margin-bottom:14px">
+        <div class="flex-between" style="margin-bottom:5px">
+          <span style="font-size:13px;font-weight:500">${r.outcome}</span>
+          <span style="font-size:12px;color:var(--text3)">${r.cnt} (${pct}%) · avg ${fmtDuration(r.avg_dur)}</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SQL CONSOLE
+// ═══════════════════════════════════════════════════════════
+const quickQueries = {
+  schema: `SELECT name as 'Table', sql as 'Definition'
+FROM sqlite_master WHERE type='table' ORDER BY name;`,
+  agents: `SELECT a.id, a.name, d.name as department, a.shift, a.status, a.hire_date
+FROM agents a LEFT JOIN departments d ON d.id = a.department_id
+ORDER BY a.name;`,
+  customers: `SELECT id, name, phone, email, account_number, tier
+FROM customers ORDER BY name LIMIT 25;`,
+  calls: `SELECT c.id, c.called_at, cu.name as customer, a.name as agent,
+       c.call_type, c.duration_seconds || 's' as duration, c.outcome
+FROM calls c
+JOIN customers cu ON cu.id = c.customer_id
+JOIN agents a ON a.id = c.agent_id
+ORDER BY c.called_at DESC LIMIT 20;`,
+  tickets: `SELECT t.id, cu.name as customer, a.name as agent,
+       t.issue, t.priority, t.category, t.status, t.created_at
+FROM tickets t
+JOIN customers cu ON cu.id = t.customer_id
+LEFT JOIN agents a ON a.id = t.agent_id
+WHERE t.status != 'Resolved'
+ORDER BY CASE t.priority WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 WHEN 'Medium' THEN 3 ELSE 4 END;`,
+  dept_stats: `SELECT d.name as department,
+       COUNT(DISTINCT a.id) as agents,
+       COUNT(c.id) as total_calls,
+       ROUND(AVG(c.duration_seconds)) as avg_duration_sec
+FROM departments d
+LEFT JOIN agents a ON a.department_id = d.id
+LEFT JOIN calls c ON c.agent_id = a.id
+GROUP BY d.id ORDER BY total_calls DESC;`,
+  agent_perf: `SELECT a.name as agent, d.name as department,
+       COUNT(c.id) as total_calls,
+       ROUND(AVG(c.duration_seconds)) as avg_duration,
+       SUM(CASE WHEN c.outcome='Resolved' THEN 1 ELSE 0 END) as resolved,
+       ROUND(SUM(CASE WHEN c.outcome='Resolved' THEN 1.0 ELSE 0 END)/COUNT(c.id)*100) || '%' as resolution_rate
+FROM agents a
+JOIN departments d ON d.id = a.department_id
+LEFT JOIN calls c ON c.agent_id = a.id
+GROUP BY a.id ORDER BY total_calls DESC;`,
+  cust_history: `SELECT cu.name as customer, cu.tier,
+       COUNT(c.id) as total_calls,
+       SUM(c.duration_seconds) as total_seconds,
+       SUM(CASE WHEN c.outcome='Resolved' THEN 1 ELSE 0 END) as resolved_calls,
+       COUNT(DISTINCT t.id) as tickets
+FROM customers cu
+LEFT JOIN calls c ON c.customer_id = cu.id
+LEFT JOIN tickets t ON t.customer_id = cu.id
+GROUP BY cu.id ORDER BY total_calls DESC LIMIT 20;`,
+  daily_volume: `SELECT DATE(called_at) as date,
+       COUNT(*) as total_calls,
+       SUM(CASE WHEN call_type='Inbound' THEN 1 ELSE 0 END) as inbound,
+       SUM(CASE WHEN call_type='Outbound' THEN 1 ELSE 0 END) as outbound,
+       ROUND(AVG(duration_seconds)) as avg_duration
+FROM calls
+GROUP BY DATE(called_at)
+ORDER BY date DESC LIMIT 14;`
+};
+
+function loadQuickQuery(key) {
+  if (!key) return;
+  document.getElementById('sqlEditor').value = quickQueries[key] || '';
+  document.getElementById('sqlQuickSelect').value = '';
+}
+
+function runSQLQuery() {
+  const sql = document.getElementById('sqlEditor').value.trim();
+  const output = document.getElementById('sqlOutput');
+  if (!sql) { output.innerHTML = ''; return; }
+  try {
+    const results = db.exec(sql);
+    if (!results.length) {
+      output.innerHTML = '<div class="sql-msg success">✅ Query executed successfully. No rows returned.</div>';
+      updateDBStats();
+      return;
+    }
+    const { columns, values } = results[0];
+    output.innerHTML = `
+      <div class="sql-msg success">✅ ${values.length} row${values.length !== 1 ? 's' : ''} returned</div>
+      <div class="sql-results">
+        <div class="table-container">
+          <table>
+            <thead><tr>${columns.map(c => `<th>${c}</th>`).join('')}</tr></thead>
+            <tbody>${values.map(row => `<tr>${row.map(v => `<td>${v !== null ? v : '<span style="color:var(--text3);font-style:italic">NULL</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>`;
+    updateDBStats();
+  } catch (e) {
+    output.innerHTML = `<div class="sql-msg error">❌ ${e.message}</div>`;
+  }
+}
+
+function clearConsole() {
+  document.getElementById('sqlEditor').value = '';
+  document.getElementById('sqlOutput').innerHTML = '';
+}
+
+function renderConsole() {
+  const tables = queryRows(`SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`);
+  const tableDescriptions = {
+    agents: 'Call center staff members',
+    customers: 'Customer records and contact info',
+    calls: 'Complete call log history',
+    tickets: 'Support tickets and issue tracking',
+    departments: 'Team departments and structure',
+    performance_reviews: 'Agent KPI and performance data'
+  };
+  document.getElementById('schemaTable').innerHTML = tables.map(t => {
+    const cols = queryRows(`PRAGMA table_info(${t.name})`);
+    const count = queryVal(`SELECT COUNT(*) FROM ${t.name}`) || 0;
+    return `<tr>
+      <td><span style="color:var(--accent3);font-weight:600">${t.name}</span></td>
+      <td style="font-family:monospace;font-size:11px;color:var(--text3)">${cols.map(c => c.name).join(', ')}</td>
+      <td><strong>${count}</strong></td>
+      <td>${tableDescriptions[t.name] || ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Ctrl+Enter to run SQL
+document.getElementById('sqlEditor').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runSQLQuery();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  initDB().catch(err => {
+    document.getElementById('loaderStatus').textContent = 'Error: ' + err.message;
+    console.error(err);
+  });
+});
+</script>
+</body>
+</html>
